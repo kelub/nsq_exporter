@@ -31,15 +31,15 @@ type nodestatsResponse struct {
 }
 
 type memory struct {
-	Gc_pause_usec_95 string `json:"gc_pause_usec_95"`
-	Gc_pause_usec_99 string `json:"gc_pause_usec_99"`
-	Gc_pause_usec_100 string `json:"gc_pause_usec_100"`
-	Gc_total_runs string `json:"gc_total_runs"`
-	Heap_idle_bytes string `json:"heap_idle_bytes"`
-	Heap_in_use_bytes string `json:"heap_in_use_bytes"`
-	Heap_objects string `json:"heap_objects"`
-	Heap_released_bytes string `json:"heap_released_bytes"`
-	Hext_gc_bytes string `json:"next_gc_bytes"`
+	Gc_pause_usec_95 int64 `json:"gc_pause_usec_95"`
+	Gc_pause_usec_99 int64 `json:"gc_pause_usec_99"`
+	Gc_pause_usec_100 int64 `json:"gc_pause_usec_100"`
+	Gc_total_runs int64 `json:"gc_total_runs"`
+	Heap_idle_bytes int64 `json:"heap_idle_bytes"`
+	Heap_in_use_bytes int64 `json:"heap_in_use_bytes"`
+	Heap_objects int64 `json:"heap_objects"`
+	Heap_released_bytes int64 `json:"heap_released_bytes"`
+	Hext_gc_bytes int64 `json:"next_gc_bytes"`
 }
 
 type stats struct {

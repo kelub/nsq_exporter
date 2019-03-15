@@ -6,7 +6,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"net/http"
 	"nsq_exporter/structs"
-	"strconv"
 )
 
 type NsqCollector struct {
@@ -54,7 +53,7 @@ func NewNSQCollector(opts structs.NsqOpts) (*NsqCollector, error) {
 					"memory heap objects.",
 					nil, nil,
 				),
-				eval:    func(nodeStats *nodestatsResponse) float64 { return nodeStats.Memory.Heap_objects},
+				eval:    func(nodeStats *nodestatsResponse) float64 { return float64(nodeStats.Memory.Heap_objects)},
 				valType: prometheus.GaugeValue,
 			},
 		},
@@ -80,6 +79,9 @@ func (c *NsqCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 	logrus.Infof("nsqd %s", nodeStats)
-	heap_objects,_ := strconv.ParseFloat(nodeStats.Memory.Heap_objects, 64)
-	ch <- prometheus.MustNewConstMetric(c.nsqinfoDesc, prometheus.GaugeValue, heap_objects)
+	//heap_objects,_ := strconv.ParseFloat(nodeStats.Memory.Heap_objects, 64)
+	ch <- prometheus.MustNewConstMetric(c.nsqinfoDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Heap_objects))
+	for _, i := range c.metrics {
+		ch <- prometheus.MustNewConstMetric (i.desc, i.valType, i.eval(&nodeStats))
+	}
 }
