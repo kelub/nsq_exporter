@@ -52,7 +52,7 @@ func main() {
 			</body>
 			</html>`))
 	})
-	logrus.Infof("Listening on", nsqOpts.listenAddr)
+	logrus.Infof("Listening on %s", nsqOpts.listenAddr)
 	if err := http.ListenAndServe(nsqOpts.listenAddr, nil); err != nil {
 		logrus.WithError(err).Fatalln("启动失败", err)
 	}
