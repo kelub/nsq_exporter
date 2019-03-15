@@ -6,29 +6,30 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"net/http"
+	"nsq_exporter/nsq_collector"
+	"nsq_exporter/structs"
 )
 
 //func main() {
 //	cmd.Execute()
 //}
 
-type NsqOpts struct {
-	listenAddr string
 
-	nsqdHttpAddr string
-}
-
-var nsqOpts = NsqOpts{}
+var nsqOpts structs.NsqOpts
 
 func initCommandLine() {
+	nsqOpts = structs.NsqOpts{
+		ListenAddr: "",
+		NsqdHttpAddr: "",
+	}
 	kingpin.Flag(
 		"listenAddr",
 		"address to nsq exporter listen, default :9101",
-	).Default(":9101").StringVar(&nsqOpts.listenAddr)
+	).Default(":9101").StringVar(&nsqOpts.ListenAddr)
 	kingpin.Flag(
 		"nsqdHttpAddr",
 		"nsqd http addr , default :4151",
-	).Default(":9101").StringVar(&nsqOpts.nsqdHttpAddr)
+	).Default(":4151").StringVar(&nsqOpts.NsqdHttpAddr)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 	fmt.Println(nsqOpts)
@@ -36,7 +37,7 @@ func initCommandLine() {
 
 func main() {
 	initCommandLine()
-	nsqcollector, err := NewNsqCollector(nsqOpts)
+	nsqcollector, err := nsq_collector.NewNSQCollector(nsqOpts)
 	if err != nil {
 		logrus.WithError(err).Fatalln("创建 NsqExporter 失败")
 	}
@@ -52,8 +53,8 @@ func main() {
 			</body>
 			</html>`))
 	})
-	logrus.Infof("Listening on %s", nsqOpts.listenAddr)
-	if err := http.ListenAndServe(nsqOpts.listenAddr, nil); err != nil {
+	logrus.Infof("Listening on %s", nsqOpts.ListenAddr)
+	if err := http.ListenAndServe(nsqOpts.ListenAddr, nil); err != nil {
 		logrus.WithError(err).Fatalln("启动失败", err)
 	}
 }
