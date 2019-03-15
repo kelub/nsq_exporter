@@ -14,12 +14,11 @@ import (
 //	cmd.Execute()
 //}
 
-
 var nsqOpts structs.NsqOpts
 
 func initCommandLine() {
 	nsqOpts = structs.NsqOpts{
-		ListenAddr: "",
+		ListenAddr:   "",
 		NsqdHttpAddr: "",
 	}
 	kingpin.Flag(

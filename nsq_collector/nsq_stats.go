@@ -25,8 +25,21 @@ type respType struct {
 
 type nodestatsResponse struct {
 	StatusCode int `json:"status_code"`
-	//StatusText string `json:"status_text"`
+	StatusText string `json:"status_text"`
 	//Data       stats  `json:"data"`
+	Memory		memory `json:"memory"`
+}
+
+type memory struct {
+	Gc_pause_usec_95 string `json:"gc_pause_usec_95"`
+	Gc_pause_usec_99 string `json:"gc_pause_usec_99"`
+	Gc_pause_usec_100 string `json:"gc_pause_usec_100"`
+	Gc_total_runs string `json:"gc_total_runs"`
+	Heap_idle_bytes string `json:"heap_idle_bytes"`
+	Heap_in_use_bytes string `json:"heap_in_use_bytes"`
+	Heap_objects string `json:"heap_objects"`
+	Heap_released_bytes string `json:"heap_released_bytes"`
+	Hext_gc_bytes string `json:"next_gc_bytes"`
 }
 
 type stats struct {
