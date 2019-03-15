@@ -6,6 +6,8 @@ import (
 )
 
 type NsqCollector struct {
+
+
 	nsqinfoDesc *prometheus.Desc
 
 	// metrics to describe and collect
