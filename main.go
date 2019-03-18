@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"net/http"
 	"nsq_exporter/nsq_collector"
 	"nsq_exporter/structs"
+	"strings"
 )
 
 //func main() {
@@ -18,20 +18,26 @@ var nsqOpts structs.NsqOpts
 
 func initCommandLine() {
 	nsqOpts = structs.NsqOpts{
-		ListenAddr:   "",
-		NsqdHttpAddr: "",
+		ListenAddr:        "",
+		NsqlookupHttpAddr: "",
+		NsqdHttpAddr:      []string{},
 	}
+	nsqdHttpAddrs := "http://127.0.0.1:4151"
 	kingpin.Flag(
 		"listenAddr",
 		"address to nsq exporter listen, default :9101",
 	).Default(":9101").StringVar(&nsqOpts.ListenAddr)
 	kingpin.Flag(
-		"nsqdHttpAddr",
-		"nsqd http addr , default :4151",
-	).Default(":4151").StringVar(&nsqOpts.NsqdHttpAddr)
+		"nsqlookupHttpAddr",
+		"nsqlookup http addr , default http://127.0.0.1:4161",
+	).Default("http://127.0.0.1:4161").StringVar(&nsqOpts.NsqlookupHttpAddr)
+	kingpin.Flag(
+		"nsqdAddrs",
+		"nsqdAddrs http addr , default http://127.0.0.1:4151",
+	).Default("http://127.0.0.1:4151").StringVar(&nsqdHttpAddrs)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	fmt.Println(nsqOpts)
+	nsqOpts.NsqdHttpAddr = strings.Split(nsqdHttpAddrs, ",")
 }
 
 func main() {

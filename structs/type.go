@@ -1,7 +1,8 @@
 package structs
 
 type NsqOpts struct {
-	ListenAddr string
-
-	NsqdHttpAddr string
+	ListenAddr        string
+	NsqlookupHttpAddr string
+	NsqdHttpAddr      []string
+	NsqdHttpAddrsstr  string
 }

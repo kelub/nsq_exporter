@@ -8,26 +8,26 @@ import (
 	"nsq_exporter/structs"
 )
 
+const (
+	namespace = "nsq"
+)
+
 type NsqCollector struct {
 	nsqlookupdAddr string   //
 	nsqdAddr       []string //nsqd http address
 	client         *Client
 
-	nsqinfoDesc *prometheus.Desc
-
-	// metrics to describe and collect
-	metrics memStatsMetrics
+	*nsqDesc
 }
 
 type Client struct {
 	c *http.Client
 }
 
-// memStatsMetrics provide description, value, and value type for memstat metrics.
-type memStatsMetrics []struct {
-	desc    *prometheus.Desc
-	eval    func(*nodestatsResponse) float64
-	valType prometheus.ValueType
+type nsqDesc struct {
+	memoryDesc   *prometheus.Desc
+	topicsDesc   *prometheus.Desc
+	channelsDesc *prometheus.Desc
 }
 
 func memstatNamespace(s string) string {
@@ -35,33 +35,37 @@ func memstatNamespace(s string) string {
 }
 
 func NewNSQCollector(opts structs.NsqOpts) (*NsqCollector, error) {
+	nsqDesc := &nsqDesc{
+		memoryDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "memory"),
+			"memory",
+			[]string{"node", "memory"}, nil,
+		),
+		topicsDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "topics"),
+			"topic",
+			[]string{"node", "topic_name", "stat"}, nil,
+		),
+		channelsDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "channel"),
+			"topic",
+			[]string{"node", "topic_name", "channel_name", "stat"}, nil,
+		),
+	}
 	return &NsqCollector{
-		nsqlookupdAddr: "http://127.0.0.1:4161",
-		nsqdAddr:       []string{"http://127.0.0.1:4151", "http://127.0.0.1:5151"},
+		nsqlookupdAddr: opts.NsqlookupHttpAddr,
+		nsqdAddr:       opts.NsqdHttpAddr,
 		client: &Client{
 			&http.Client{},
 		},
-		nsqinfoDesc: prometheus.NewDesc(
-			"nsq_info",
-			"nsq version",
-			nil, nil,
-		),
-		metrics: memStatsMetrics{
-			{
-				desc: prometheus.NewDesc(
-					memstatNamespace("memory_heap_objects"),
-					"memory heap objects.",
-					nil, nil,
-				),
-				eval:    func(nodeStats *nodestatsResponse) float64 { return float64(nodeStats.Memory.Heap_objects)},
-				valType: prometheus.GaugeValue,
-			},
-		},
+		nsqDesc: nsqDesc,
 	}, nil
 }
 
 func (c *NsqCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.nsqinfoDesc
+	ch <- c.memoryDesc
+	ch <- c.topicsDesc
+	ch <- c.channelsDesc
 }
 
 func (c *NsqCollector) Collect(ch chan<- prometheus.Metric) {
@@ -73,15 +77,42 @@ func (c *NsqCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	logrus.Infof("nsqlookupdNodes %s", nsqlookupdNodes)
 	var nodeStats nodestatsResponse
-	endpointStats := fmt.Sprintf("%s/%s", c.nsqdAddr[0], "stats?format=json")
-	if err := c.client.GETV1(endpointStats, &nodeStats); err != nil {
-		logrus.Error("get ", c.nsqdAddr[0], err)
-		return
+
+	for i := 0; i < len(c.nsqdAddr); i++ {
+		nsqdAddr := c.nsqdAddr[i]
+		endpointStats := fmt.Sprintf("%s/%s", nsqdAddr, "stats?format=json")
+		if err := c.client.GETV1(endpointStats, &nodeStats); err != nil {
+			logrus.Error("get ", nsqdAddr, err)
+			return
+		}
+		logrus.Infof("nsqd %s", nodeStats)
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Gc_pause_usec_95), nsqdAddr, "gc_pause_usec_95")
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Gc_pause_usec_99), nsqdAddr, "gc_pause_usec_99")
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Gc_pause_usec_100), nsqdAddr, "gc_pause_usec_100")
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Gc_total_runs), nsqdAddr, "gc_total_runs")
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Heap_idle_bytes), nsqdAddr, "heap_idle_bytes")
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Heap_in_use_bytes), nsqdAddr, "heap_in_use_bytes")
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Heap_objects), nsqdAddr, "heap_objects")
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Heap_released_bytes), nsqdAddr, "heap_released_bytes")
+		ch <- prometheus.MustNewConstMetric(c.memoryDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Next_gc_bytes), nsqdAddr, "next_gc_bytes")
+
+		for j := 0; j < len(nodeStats.Topics); j++ {
+			nodeTopics := nodeStats.Topics[j]
+			ch <- prometheus.MustNewConstMetric(c.topicsDesc, prometheus.GaugeValue, float64(nodeTopics.MessageCount), nsqdAddr, nodeTopics.Name, "MessageCount")
+			ch <- prometheus.MustNewConstMetric(c.topicsDesc, prometheus.GaugeValue, float64(nodeTopics.BackendDepth), nsqdAddr, nodeTopics.Name, "BackendDepth")
+			ch <- prometheus.MustNewConstMetric(c.topicsDesc, prometheus.GaugeValue, float64(nodeTopics.Depth), nsqdAddr, nodeTopics.Name, "Depth")
+			for k := 0; k < len(nodeTopics.Channels); k++ {
+				nodeTopicChannel := nodeTopics.Channels[k]
+				ch <- prometheus.MustNewConstMetric(c.channelsDesc, prometheus.GaugeValue, float64(nodeTopicChannel.Depth), nsqdAddr, nodeTopics.Name, nodeTopicChannel.Name, "Depth")
+				ch <- prometheus.MustNewConstMetric(c.channelsDesc, prometheus.GaugeValue, float64(nodeTopicChannel.BackendDepth), nsqdAddr, nodeTopics.Name, nodeTopicChannel.Name, "BackendDepth")
+
+				ch <- prometheus.MustNewConstMetric(c.channelsDesc, prometheus.GaugeValue, float64(nodeTopicChannel.DeferredCount), nsqdAddr, nodeTopics.Name, nodeTopicChannel.Name, "DeferredCount")
+				ch <- prometheus.MustNewConstMetric(c.channelsDesc, prometheus.GaugeValue, float64(nodeTopicChannel.RequeueCount), nsqdAddr, nodeTopics.Name, nodeTopicChannel.Name, "RequeueCount")
+				ch <- prometheus.MustNewConstMetric(c.channelsDesc, prometheus.GaugeValue, float64(nodeTopicChannel.InFlightCount), nsqdAddr, nodeTopics.Name, nodeTopicChannel.Name, "in_flight_count")
+				ch <- prometheus.MustNewConstMetric(c.channelsDesc, prometheus.GaugeValue, float64(nodeTopicChannel.MessageCount), nsqdAddr, nodeTopics.Name, nodeTopicChannel.Name, "message_count")
+				ch <- prometheus.MustNewConstMetric(c.channelsDesc, prometheus.GaugeValue, float64(nodeTopicChannel.TimeoutCount), nsqdAddr, nodeTopics.Name, nodeTopicChannel.Name, "timeout_count")
+			}
+		}
 	}
-	logrus.Infof("nsqd %s", nodeStats)
-	//heap_objects,_ := strconv.ParseFloat(nodeStats.Memory.Heap_objects, 64)
-	ch <- prometheus.MustNewConstMetric(c.nsqinfoDesc, prometheus.GaugeValue, float64(nodeStats.Memory.Heap_objects))
-	for _, i := range c.metrics {
-		ch <- prometheus.MustNewConstMetric (i.desc, i.valType, i.eval(&nodeStats))
-	}
+
 }

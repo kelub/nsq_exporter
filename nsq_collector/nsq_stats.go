@@ -24,22 +24,23 @@ type respType struct {
 }
 
 type nodestatsResponse struct {
-	StatusCode int `json:"status_code"`
+	StatusCode int    `json:"status_code"`
 	StatusText string `json:"status_text"`
 	//Data       stats  `json:"data"`
-	Memory		memory `json:"memory"`
+	Memory memory  `json:"memory"`
+	Topics []topic `json:"topics"`
 }
 
 type memory struct {
-	Gc_pause_usec_95 int64 `json:"gc_pause_usec_95"`
-	Gc_pause_usec_99 int64 `json:"gc_pause_usec_99"`
-	Gc_pause_usec_100 int64 `json:"gc_pause_usec_100"`
-	Gc_total_runs int64 `json:"gc_total_runs"`
-	Heap_idle_bytes int64 `json:"heap_idle_bytes"`
-	Heap_in_use_bytes int64 `json:"heap_in_use_bytes"`
-	Heap_objects int64 `json:"heap_objects"`
+	Gc_pause_usec_95    int64 `json:"gc_pause_usec_95"`
+	Gc_pause_usec_99    int64 `json:"gc_pause_usec_99"`
+	Gc_pause_usec_100   int64 `json:"gc_pause_usec_100"`
+	Gc_total_runs       int64 `json:"gc_total_runs"`
+	Heap_idle_bytes     int64 `json:"heap_idle_bytes"`
+	Heap_in_use_bytes   int64 `json:"heap_in_use_bytes"`
+	Heap_objects        int64 `json:"heap_objects"`
 	Heap_released_bytes int64 `json:"heap_released_bytes"`
-	Hext_gc_bytes int64 `json:"next_gc_bytes"`
+	Next_gc_bytes       int64 `json:"next_gc_bytes"`
 }
 
 type stats struct {
